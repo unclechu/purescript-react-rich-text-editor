@@ -1,7 +1,6 @@
 -- See https://github.com/sstur/react-rte
 module Bindings.ReactRichTextEditor
      ( Props
-     , RTE
      , EditorValue
      , EditorValueFormat (..)
      , richTextEditor
@@ -13,16 +12,17 @@ module Bindings.ReactRichTextEditor
 
 import Prelude
 
-import Control.Monad.Eff (kind Effect, Eff)
+import Effect (Effect)
+import Effect.Uncurried (EffectFn1)
 
-import Data.Generic (class Generic, gShow)
+import Data.Generic.Rep (class Generic)
+import Data.Generic.Rep.Show (genericShow)
 import Data.Nullable (Nullable, toNullable)
 import Data.Maybe (Maybe (..))
 
-import React (ReactClass, EventHandler)
+import React (ReactClass)
 
 
-foreign import data RTE :: Effect
 foreign import data EditorValue :: Type
 
 type Props rootStyle editorStyle toolbarStyle =
@@ -30,7 +30,7 @@ type Props rootStyle editorStyle toolbarStyle =
   , toolbarClassName :: Nullable String -- toolbarClassName?: string;
   , editorClassName  :: Nullable String -- editorClassName?: string;
   , value            :: EditorValue -- value: EditorValue;
-  , onChange         :: Nullable (EventHandler EditorValue)
+  , onChange         :: Nullable (EffectFn1 EditorValue Unit)
                      -- onChange?: ChangeHandler;
                      -- type ChangeHandler = (value: EditorValue) => any;
   , placeholder      :: Nullable String -- placeholder?: string;
@@ -76,18 +76,12 @@ foreign import richTextEditor
   :: forall rootStyle editorStyle toolbarStyle
    . ReactClass (Props rootStyle editorStyle toolbarStyle)
 
-foreign import createEmptyValue
-  :: forall eff. Eff (rte :: RTE | eff) EditorValue
+foreign import createEmptyValue :: Effect EditorValue
 
 foreign import createValueFromStringRaw
-  :: forall eff. String -> String -> Eff (rte :: RTE | eff) EditorValue
+  :: String -> String -> Effect EditorValue
 
-createValueFromString
-  :: forall eff
-   . String
-  -> EditorValueFormat
-  -> Eff (rte :: RTE | eff) EditorValue
-
+createValueFromString :: String -> EditorValueFormat -> Effect EditorValue
 createValueFromString markup = createValueFromStringRaw markup <<< rawFormat
 
 foreign import valueToStringRaw :: EditorValue -> String -> String
@@ -97,8 +91,9 @@ valueToString value = valueToStringRaw value <<< rawFormat
 
 data EditorValueFormat = HTML | Markdown | RAW
 derive instance eqEditorValueFormat :: Eq EditorValueFormat
-derive instance genericEditorValueFormat :: Generic EditorValueFormat
-instance showEditorValueFormat :: Show EditorValueFormat where show = gShow
+derive instance genericEditorValueFormat :: Generic EditorValueFormat _
+instance showEditorValueFormat :: Show EditorValueFormat where
+  show = genericShow
 
 rawFormat :: EditorValueFormat -> String
 rawFormat HTML     = "html"
